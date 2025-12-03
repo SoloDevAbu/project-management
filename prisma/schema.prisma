@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -11,4 +8,491 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrgMemberRole {
+  ADMIN
+  MAINTAINER
+  MEMBER
+}
+
+enum ProjectStatus {
+  PLANNED
+  IN_PROGRESS
+  HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskType {
+  BUG
+  FEATURE
+  TASK
+  CHANGE
+  RESEARCH
+  OTHER
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  REVIEW
+  DONE
+  ARCHIVED
+}
+
+enum TaskPriority {
+  P0
+  P1
+  P2
+  P3
+  P4
+}
+
+enum InventoryType {
+  PERMANENT_ASSET
+  CONSUMABLE
+  OTHER
+}
+
+enum InventoryLogType {
+  PROCUREMENT
+  LEASE_ASSIGNMENT
+  ASSIGNMENT
+  RETURN
+  USE
+  CONSUMPTION
+  DESTRUCTION
+}
+
+enum TransactionType {
+  BUDGET_ADD
+  EXPENSE
+  REFUND
+  ADJUSTMENT
+}
+
+enum TransactionScope {
+  PROJECT
+  TASK
+}
+
+enum OrgStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String?
+  password  String
+  status    UserStatus @default(ACTIVE)
+  avatar    String?
+  createdAt DateTime   @default(now()) @map("created_at")
+  lastLogin DateTime?  @map("last_login")
+
+  orgMemberships        OrgMember[]
+  teamMemberships       TeamMember[]
+  createdOrgs           Organization[] @relation("OrgCreator")
+  createdTeams          Team[]         @relation("TeamCreator")
+  createdProjects       Project[]      @relation("ProjectCreator")
+  createdTasks          Task[]         @relation("TaskCreator")
+  createdWorkLogs       WorkLog[]      @relation("WorkLogCreator")
+  createdInventoryItems InventoryItem[]
+  createdInventoryLogs  InventoryLog[]
+  createdTransactions   Transaction[]
+  assignedTasks         Task[]         @relation("TaskAssignee")
+  reviewedTasks         Task[]         @relation("TaskReviewer")
+  workLogs              WorkLog[]      @relation("WorkLogUser")
+  projectUserLinks      ProjectUserLink[]
+  inventoryLogUsers     InventoryLogUser[]
+  auditLogs             AuditLog[]
+
+  @@map("users")
+}
+
+model Organization {
+  id           String    @id @default(uuid())
+  name         String
+  legalName    String?   @map("legal_name")
+  country      String?
+  address      String?
+  contactEmail String?   @map("contact_email")
+  contactPhone String?   @map("contact_phone")
+  createdBy    String    @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  status       OrgStatus @default(ACTIVE)
+
+  creator      User      @relation("OrgCreator", fields: [createdBy], references: [id])
+  members      OrgMember[]
+  teams        Team[]
+  projects     Project[]
+  workLogs     WorkLog[]
+  inventoryItems InventoryItem[]
+  inventoryLogs InventoryLog[]
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrgMember {
+  orgId    String        @map("org_id")
+  userId   String        @map("user_id")
+  role     OrgMemberRole @default(MEMBER)
+  joinedAt DateTime      @default(now()) @map("joined_at")
+
+  org      Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([orgId, userId])
+  @@map("org_members")
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  name        String
+  description String?
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator     User         @relation("TeamCreator", fields: [createdBy], references: [id])
+  members     TeamMember[]
+  projectLinks ProjectTeamLink[]
+
+  @@unique([orgId, name])
+  @@map("teams")
+}
+
+model TeamMember {
+  teamId   String   @map("team_id")
+  userId   String   @map("user_id")
+  role     String?
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@map("team_members")
+}
+
+model Project {
+  id            String        @id @default(uuid())
+  orgId         String        @map("org_id")
+  parentId      String?       @map("parent_id")
+  name          String
+  code          String
+  description   String?
+  status        ProjectStatus @default(PLANNED)
+  startDate     DateTime?     @map("start_date")
+  deadline      DateTime?
+  costToDate    Decimal       @default(0) @map("cost_to_date") @db.Decimal(15, 2)
+  budgetTotal   Decimal?      @map("budget_total") @db.Decimal(15, 2)
+  currency      String        @default("USD")
+  metadata      Json?         @default("{}")
+  createdBy     String        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  org           Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent        Project?      @relation("ProjectHierarchy", fields: [parentId], references: [id])
+  children      Project[]     @relation("ProjectHierarchy")
+  creator       User          @relation("ProjectCreator", fields: [createdBy], references: [id])
+  teamLinks     ProjectTeamLink[]
+  userLinks     ProjectUserLink[]
+  tasks         Task[]
+  workLogs      WorkLog[]
+  inventoryLinks InventoryLink[]
+
+  @@unique([orgId, code])
+  @@index([orgId])
+  @@index([parentId])
+  @@map("projects")
+}
+
+model ProjectTeamLink {
+  projectId String  @map("project_id")
+  teamId    String  @map("team_id")
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, teamId])
+  @@map("project_team_links")
+}
+
+model ProjectUserLink {
+  projectId String  @map("project_id")
+  userId    String  @map("user_id")
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@map("project_user_links")
+}
+
+model Task {
+  id              String        @id @default(uuid())
+  projectId       String        @map("project_id")
+  parentId        String?       @map("parent_id")
+  title           String
+  description     String?
+  type            TaskType      @default(TASK)
+  status          TaskStatus    @default(BACKLOG)
+  priority        TaskPriority  @default(P4)
+  assignmentDt    DateTime?     @map("assignment_dt")
+  startDt         DateTime?     @map("start_dt")
+  endDt           DateTime?     @map("end_dt")
+  deadlineDt      DateTime?     @map("deadline_dt")
+  assigneeUserId  String?       @map("assignee_user_id")
+  reviewerUserId  String?       @map("reviewer_user_id")
+  budgetAmount    Decimal?      @map("budget_amount") @db.Decimal(15, 2)
+  currency        String        @default("USD")
+  createdBy       String        @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent          Task?         @relation("TaskHierarchy", fields: [parentId], references: [id])
+  children        Task[]        @relation("TaskHierarchy")
+  assignee        User?         @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+  reviewer        User?         @relation("TaskReviewer", fields: [reviewerUserId], references: [id])
+  creator         User          @relation("TaskCreator", fields: [createdBy], references: [id])
+  dependencies    TaskDependency[] @relation("BlockedTask")
+  blockingTasks   TaskDependency[] @relation("BlockingTask")
+  assigneeTransfers TaskAssigneeTransfer[]
+  reviewerTransfers TaskReviewerTransfer[]
+  tags            TaskTag[]
+  workLogs        WorkLog[]
+  inventoryLinks  InventoryLink[]
+
+  @@index([projectId])
+  @@index([parentId])
+  @@index([assigneeUserId])
+  @@index([reviewerUserId])
+  @@index([status])
+  @@map("tasks")
+}
+
+model TaskDependency {
+  taskId          String @map("task_id")
+  blockedByTaskId String @map("blocked_by_task_id")
+
+  task            Task   @relation("BlockedTask", fields: [taskId], references: [id], onDelete: Cascade)
+  blockedByTask   Task   @relation("BlockingTask", fields: [blockedByTaskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, blockedByTaskId])
+  @@map("task_dependencies")
+}
+
+model TaskAssigneeTransfer {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  fromUserId String? @map("from_user_id")
+  toUserId  String?  @map("to_user_id")
+  changedBy String   @map("changed_by")
+  reason    String?
+  timestamp DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_assignee_transfers")
+}
+
+model TaskReviewerTransfer {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  fromUserId String? @map("from_user_id")
+  toUserId  String?  @map("to_user_id")
+  changedBy String   @map("changed_by")
+  reason    String?
+  timestamp DateTime @default(now())
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_reviewer_transfers")
+}
+
+model TaskTag {
+  taskId String @map("task_id")
+  tag    String
+
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tag])
+  @@map("task_tags")
+}
+
+model WorkLog {
+  id               String   @id @default(uuid())
+  orgId            String   @map("org_id")
+  userId           String   @map("user_id")
+  createdBy        String   @map("created_by")
+  projectId        String?  @map("project_id")
+  taskId           String?  @map("task_id")
+  totalDurationMin Int      @map("total_duration_min")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user     User         @relation("WorkLogUser", fields: [userId], references: [id], onDelete: Cascade)
+  creator  User         @relation("WorkLogCreator", fields: [createdBy], references: [id])
+  project  Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task     Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  segments WorkLogSegment[]
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([projectId])
+  @@index([taskId])
+  @@map("work_logs")
+}
+
+model WorkLogSegment {
+  id            String   @id @default(uuid())
+  workLogId     String   @map("work_log_id")
+  startDt       DateTime @map("start_dt")
+  endDt         DateTime @map("end_dt")
+  durationMin   Int      @map("duration_min")
+  comment       String?
+
+  workLog       WorkLog  @relation(fields: [workLogId], references: [id], onDelete: Cascade)
+
+  @@index([workLogId])
+  @@map("work_log_segments")
+}
+
+model InventoryItem {
+  id                      String          @id @default(uuid())
+  orgId                   String          @map("org_id")
+  name                    String
+  details                 String?
+  type                    InventoryType  @default(OTHER)
+  source                  String?
+  batchNo                 String?         @map("batch_no")
+  expiryDate              DateTime?       @map("expiry_date")
+  warranty                String?
+  unitPrice               Decimal         @default(0) @map("unit_price") @db.Decimal(15, 2)
+  currency                String          @default("USD")
+  annualDepreciationPercent Decimal?      @map("annual_depreciation_percent") @db.Decimal(5, 2)
+  serialNo                String?        @map("serial_no")
+  quantityCurrent         Int            @default(0) @map("quantity_current")
+  createdBy               String          @map("created_by")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  org                     Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator                 User            @relation(fields: [createdBy], references: [id])
+  logs                    InventoryLog[]
+  links                   InventoryLink[]
+
+  @@index([orgId])
+  @@index([type])
+  @@map("inventory_items")
+}
+
+model InventoryLog {
+  id            String            @id @default(uuid())
+  orgId         String            @map("org_id")
+  inventoryId   String            @map("inventory_id")
+  logType       InventoryLogType  @map("log_type")
+  datetime      DateTime
+  quantity      Int
+  notes         String?
+  createdBy     String            @map("created_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  org           Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  inventory     InventoryItem     @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  creator       User              @relation(fields: [createdBy], references: [id])
+  users         InventoryLogUser[]
+  link          InventoryLink?
+
+  @@index([orgId])
+  @@index([inventoryId])
+  @@map("inventory_logs")
+}
+
+model InventoryLogUser {
+  logId  String @map("log_id")
+  userId String @map("user_id")
+
+  log    InventoryLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([logId, userId])
+  @@map("inventory_log_users")
+}
+
+model InventoryLink {
+  id          String   @id @default(uuid())
+  inventoryId String   @map("inventory_id")
+  projectId   String?  @map("project_id")
+  taskId      String?  @map("task_id")
+  logId       String?  @map("log_id") @unique
+
+  inventory   InventoryItem @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task        Task?         @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  log         InventoryLog? @relation(fields: [logId], references: [id], onDelete: SetNull)
+
+  @@index([inventoryId])
+  @@index([projectId])
+  @@index([taskId])
+  @@map("inventory_links")
+}
+
+model Transaction {
+  id        String            @id @default(uuid())
+  orgId     String            @map("org_id")
+  scope     TransactionScope
+  scopeId   String            @map("scope_id")
+  type      TransactionType
+  amount    Decimal           @db.Decimal(15, 2)
+  currency  String            @default("USD")
+  datetime  DateTime
+  notes     String?
+  createdBy String            @map("created_by")
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  org       Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator   User              @relation(fields: [createdBy], references: [id])
+
+  @@index([orgId])
+  @@index([scope, scopeId])
+  @@map("transactions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  orgId      String?  @map("org_id")
+  actorUserId String  @map("actor_user_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  diffJson   Json?    @map("diff_json")
+  timestamp  DateTime @default(now())
+
+  org        Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+  actor      User          @relation(fields: [actorUserId], references: [id])
+
+  @@index([orgId])
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_logs")
 }
