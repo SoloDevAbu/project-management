@@ -1,0 +1,86 @@
+'use client';
+
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useOrganizations } from '@/hooks/organization/useOrganizations';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+
+export default function HomePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { data: orgs, isLoading } = useOrganizations();
+
+  if (status === 'loading') {
+    return <div>Loading...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/signin');
+    return null;
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">My Organizations</h1>
+          <p className="text-muted-foreground">
+            Manage your organizations and projects
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/orgs/new">Create Organization</Link>
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div>Loading organizations...</div>
+      ) : orgs && orgs.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {orgs.map((org) => (
+            <Card key={org.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle>{org.name}</CardTitle>
+                <CardDescription>
+                  {org.legalName || 'No legal name'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Status: {org.status}
+                  </p>
+                  {org.members && (
+                    <p className="text-sm text-muted-foreground">
+                      Members: {org.members.length}
+                    </p>
+                  )}
+                  <Button asChild className="w-full mt-4">
+                    <Link href={`/orgs/${org.id}`}>View Organization</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>No organizations yet</CardTitle>
+            <CardDescription>
+              Create your first organization to get started
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/orgs/new">Create Organization</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
