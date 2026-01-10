@@ -11,14 +11,52 @@ export interface Organization {
   contactPhone?: string | null;
   status: string;
   createdAt: string;
-  members?: Array<{
-    role: string;
-    user: {
-      id: string;
-      email: string;
-      name?: string | null;
-    };
-  }>;
+  _count?: {
+    members: number;
+    teams: number;
+    projects: number;
+  };
+}
+
+export interface OrgMember {
+  role: string;
+  joinedAt: string;
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+    avatar?: string | null;
+  };
+}
+
+export interface OrgTeam {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  creator: {
+    id: string;
+    email: string;
+    name?: string | null;
+  };
+  _count: {
+    members: number;
+    projectLinks: number;
+  };
+}
+
+export interface OrgProject {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  status: string;
+  createdAt: string;
+  creator: {
+    id: string;
+    email: string;
+    name?: string | null;
+  };
 }
 
 export interface CreateOrganizationInput {
@@ -81,3 +119,48 @@ export function useUpdateOrganization(orgId: string) {
   });
 }
 
+export function useOrganizationMembers(orgId: string | null, page: number = 1) {
+  return useQuery({
+    queryKey: ['organizations', orgId, 'members', page],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data } = await api.get<{
+        members: OrgMember[];
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+          hasNext: boolean;
+          hasPrev: boolean;
+        };
+      }>(`/orgs/${orgId}/members?page=${page}`);
+      return data;
+    },
+    enabled: !!orgId,
+  });
+}
+
+export function useOrganizationTeams(orgId: string | null) {
+  return useQuery({
+    queryKey: ['organizations', orgId, 'teams'],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data } = await api.get<{ teams: OrgTeam[] }>(`/orgs/${orgId}/teams`);
+      return data.teams;
+    },
+    enabled: !!orgId,
+  });
+}
+
+export function useOrganizationProjects(orgId: string | null) {
+  return useQuery({
+    queryKey: ['organizations', orgId, 'projects'],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data } = await api.get<{ projects: OrgProject[] }>(`/orgs/${orgId}/projects`);
+      return data.projects;
+    },
+    enabled: !!orgId,
+  });
+}

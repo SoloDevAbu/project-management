@@ -1,18 +1,37 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useOrganization } from '@/hooks/organization/useOrganizations';
+import {
+  useOrganization,
+  useOrganizationMembers,
+  useOrganizationTeams,
+  useOrganizationProjects,
+} from '@/hooks/organization/useOrganizations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import Link from 'next/link';
 
 export default function OrganizationPage() {
   const params = useParams();
   const orgId = params.orgId as string;
-  const { data: org, isLoading } = useOrganization(orgId);
+  const [membersPage, setMembersPage] = useState(1);
+  
+  const { data: org, isLoading: orgLoading } = useOrganization(orgId);
+  const { data: membersData, isLoading: membersLoading } = useOrganizationMembers(orgId, membersPage);
+  const { data: teams, isLoading: teamsLoading } = useOrganizationTeams(orgId);
+  const { data: projects, isLoading: projectsLoading } = useOrganizationProjects(orgId);
 
-  if (isLoading) {
+  if (orgLoading) {
     return <div>Loading...</div>;
   }
 
@@ -43,7 +62,7 @@ export default function OrganizationPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Members</CardDescription>
                 <CardTitle className="text-2xl">
-                  {org.members?.length || 0}
+                  {org._count?.members || 0}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -51,7 +70,7 @@ export default function OrganizationPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Teams</CardDescription>
                 <CardTitle className="text-2xl">
-                  {org.members?.length || 0}
+                  {org._count?.teams || 0}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -59,7 +78,7 @@ export default function OrganizationPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Projects</CardDescription>
                 <CardTitle className="text-2xl">
-                  {org.projects?.length || 0}
+                  {org._count?.projects || 0}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -97,20 +116,61 @@ export default function OrganizationPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {org.members && org.members.length > 0 ? (
-                <div className="space-y-2">
-                  {org.members.map((member) => (
-                    <div
-                      key={member.user.id}
-                      className="flex items-center justify-between p-2 border rounded"
-                    >
-                      <div>
-                        <p className="font-medium">{member.user.name || member.user.email}</p>
-                        <p className="text-sm text-muted-foreground">{member.user.email}</p>
+              {membersLoading ? (
+                <div>Loading members...</div>
+              ) : membersData && membersData.members.length > 0 ? (
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Joined</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {membersData.members.map((member) => (
+                        <TableRow key={member.user.id}>
+                          <TableCell className="font-medium">
+                            {member.user.name || 'N/A'}
+                          </TableCell>
+                          <TableCell>{member.user.email}</TableCell>
+                          <TableCell>{member.role}</TableCell>
+                          <TableCell>
+                            {new Date(member.joinedAt).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {membersData.pagination && membersData.pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Page {membersData.pagination.page} of {membersData.pagination.totalPages} 
+                        ({membersData.pagination.total} total)
                       </div>
-                      <span className="text-sm">{member.role}</span>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
+                          disabled={!membersData.pagination.hasPrev}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setMembersPage((p) => p + 1)}
+                          disabled={!membersData.pagination.hasNext}
+                        >
+                          Next
+                        </Button>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               ) : (
                 <p className="text-muted-foreground">No members yet</p>
@@ -128,19 +188,31 @@ export default function OrganizationPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {org.members && org.members.length > 0 ? (
+              {teamsLoading ? (
+                <div>Loading teams...</div>
+              ) : teams && teams.length > 0 ? (
                 <div className="space-y-2">
-                  {org.members.map((member) => (
+                  {teams.map((team) => (
                     <div
-                      key={member.user.id}
-                      className="flex items-center justify-between p-2 border rounded"
+                      key={team.id}
+                      className="flex items-center justify-between p-4 border rounded"
                     >
                       <div>
-                        <p className="font-medium">{member.user.name || member.user.email}</p>
+                        <p className="font-medium">{team.name}</p>
+                        {team.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {team.description}
+                          </p>
+                        )}
+                        <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+                          <span>Members: {team._count.members}</span>
+                          <span>Projects: {team._count.projectLinks}</span>
+                        </div>
                       </div>
-                      <span className="text-sm">
-                        {member.role}
-                      </span>
+                      <div className="text-right text-sm text-muted-foreground">
+                        <p>Created by {team.creator.name || team.creator.email}</p>
+                        <p>{new Date(team.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -162,18 +234,30 @@ export default function OrganizationPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {org.projects && org.projects.length > 0 ? (
+              {projectsLoading ? (
+                <div>Loading projects...</div>
+              ) : projects && projects.length > 0 ? (
                 <div className="space-y-2">
-                  {org.projects.map((project) => (
+                  {projects.map((project) => (
                     <div
                       key={project.id}
-                      className="flex items-center justify-between p-2 border rounded"
+                      className="flex items-center justify-between p-4 border rounded"
                     >
                       <div>
                         <p className="font-medium">{project.name}</p>
                         <p className="text-sm text-muted-foreground">{project.code}</p>
+                        {project.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {project.description}
+                          </p>
+                        )}
                       </div>
-                      <span className="text-sm">{project.status}</span>
+                      <div className="text-right">
+                        <span className="text-sm">{project.status}</span>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Created {new Date(project.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>

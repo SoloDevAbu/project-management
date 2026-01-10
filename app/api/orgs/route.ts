@@ -39,6 +39,13 @@ export async function GET() {
 
     return NextResponse.json({ orgs: orgs.map((om) => om.org) });
   } catch (error) {
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch organizations', message: error.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Failed to fetch organizations' },
       { status: 500 }
@@ -80,7 +87,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Invalid input', details: error.message },
         { status: 400 }
       );
     }

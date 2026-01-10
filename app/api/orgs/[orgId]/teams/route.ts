@@ -11,11 +11,8 @@ export async function GET(
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
 
-    const projects = await prisma.project.findMany({
-      where: {
-        orgId,
-        parentId: null,
-      },
+    const teams = await prisma.team.findMany({
+      where: { orgId },
       include: {
         creator: {
           select: {
@@ -24,11 +21,17 @@ export async function GET(
             name: true,
           },
         },
+        _count: {
+          select: {
+            members: true,
+            projectLinks: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ projects });
+    return NextResponse.json({ teams });
   } catch (error) {
     if (error instanceof Error && error.message === 'Access denied') {
       return NextResponse.json(
@@ -38,7 +41,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { error: 'Failed to fetch projects' },
+      { error: 'Failed to fetch teams' },
       { status: 500 }
     );
   }

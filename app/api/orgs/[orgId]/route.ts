@@ -39,38 +39,16 @@ export async function GET(
 
     const org = await prisma.organization.findUnique({
       where: { id: orgId },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-        teams: {
-          include: {
-            members: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        projects: {
-          where: { parentId: null },
-          take: 10,
-        },
+      select: {
+        id: true,
+        name: true,
+        legalName: true,
+        country: true,
+        address: true,
+        contactEmail: true,
+        contactPhone: true,
+        status: true,
+        createdAt: true,
         _count: {
           select: {
             members: true,
@@ -125,7 +103,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Invalid input', details: error.message },
         { status: 400 }
       );
     }
