@@ -1,16 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useOrganizations } from '@/hooks/organization/useOrganizations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { CreateOrganizationDialog } from '@/components/organization/CreateOrganizationDialog';
 
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { data: orgs, isLoading } = useOrganizations();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   if (status === 'loading') {
     return <div>Loading...</div>;
@@ -30,8 +33,8 @@ export default function HomePage() {
             Manage your organizations and projects
           </p>
         </div>
-        <Button asChild>
-          <Link href="/orgs/new">Create Organization</Link>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          Create Organization
         </Button>
       </div>
 
@@ -74,12 +77,17 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
-              <Link href="/orgs/new">Create Organization</Link>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              Create Organization
             </Button>
           </CardContent>
         </Card>
       )}
+
+      <CreateOrganizationDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
     </div>
   );
 }

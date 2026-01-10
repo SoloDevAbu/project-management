@@ -51,7 +51,7 @@ export default function OrganizationPage() {
               <CardHeader className="pb-2">
                 <CardDescription>Teams</CardDescription>
                 <CardTitle className="text-2xl">
-                  {org.teams?.length || 0}
+                  {org.members?.length || 0}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -128,21 +128,18 @@ export default function OrganizationPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {org.teams && org.teams.length > 0 ? (
+              {org.members && org.members.length > 0 ? (
                 <div className="space-y-2">
-                  {org.teams.map((team) => (
+                  {org.members.map((member) => (
                     <div
-                      key={team.id}
+                      key={member.user.id}
                       className="flex items-center justify-between p-2 border rounded"
                     >
                       <div>
-                        <p className="font-medium">{team.name}</p>
-                        {team.description && (
-                          <p className="text-sm text-muted-foreground">{team.description}</p>
-                        )}
+                        <p className="font-medium">{member.user.name || member.user.email}</p>
                       </div>
                       <span className="text-sm">
-                        {team.members?.length || 0} members
+                        {member.role}
                       </span>
                     </div>
                   ))}

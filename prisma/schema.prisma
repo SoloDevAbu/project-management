@@ -124,11 +124,11 @@ model User {
 model Organization {
   id           String    @id @default(uuid())
   name         String
-  legalName    String?   @map("legal_name")
-  country      String?
-  address      String?
-  contactEmail String?   @map("contact_email")
-  contactPhone String?   @map("contact_phone")
+  legalName    String   @map("legal_name")
+  country      String
+  address      String
+  contactEmail String   @map("contact_email")
+  contactPhone String   @map("contact_phone")
   createdBy    String    @map("created_by")
   createdAt    DateTime  @default(now()) @map("created_at")
   status       OrgStatus @default(ACTIVE)
