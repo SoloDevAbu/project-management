@@ -4,14 +4,14 @@ import { api } from '@/lib/axios';
 export interface Organization {
   id: string;
   name: string;
-  legalName?: string | null;
-  country?: string | null;
-  address?: string | null;
-  contactEmail?: string | null;
-  contactPhone?: string | null;
+  legalName: string | null;
+  country: string | null;
+  address: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
   status: string;
   createdAt: string;
-  _count?: {
+  _count: {
     members: number;
     teams: number;
     projects: number;

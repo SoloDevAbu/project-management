@@ -5,11 +5,11 @@ import { requireAuth } from '@/lib/auth';
 
 const createOrgSchema = z.object({
   name: z.string().min(1),
-  legalName: z.string().optional(),
-  country: z.string().optional(),
-  address: z.string().optional(),
-  contactEmail: z.string().email().optional(),
-  contactPhone: z.string().optional(),
+  legalName: z.string().min(1),
+  country: z.string().min(1),
+  address: z.string().min(1),
+  contactEmail: z.string().email().min(1),
+  contactPhone: z.string().min(1),
 });
 
 export async function GET() {
@@ -20,16 +20,21 @@ export async function GET() {
       where: { userId: user.id },
       include: {
         org: {
-          include: {
-            members: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                  },
-                },
+          select: {
+            id: true,
+            name: true,
+            legalName: true,
+            country: true,
+            address: true,
+            contactEmail: true,
+            contactPhone: true,
+            status: true,
+            createdAt: true,
+            _count: {
+              select: {
+                members: true,
+                teams: true,
+                projects: true,
               },
             },
           },

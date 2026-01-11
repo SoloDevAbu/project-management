@@ -55,9 +55,9 @@ export default function HomePage() {
                   <p className="text-sm text-muted-foreground">
                     Status: {org.status}
                   </p>
-                  {org.members && (
+                  {org._count?.members && (
                     <p className="text-sm text-muted-foreground">
-                      Members: {org.members.length}
+                      Members: {org._count.members}
                     </p>
                   )}
                   <Button asChild className="w-full mt-4">
