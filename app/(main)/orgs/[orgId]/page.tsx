@@ -20,12 +20,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
+import { CreateTeamDialog } from '@/components/teams/CreateTeamDialog';
 
 export default function OrganizationPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const [membersPage, setMembersPage] = useState(1);
   const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
+  const [isCreateTeamDialogOpen, setIsCreateTeamDialogOpen] = useState(false);
   
   const { data: org, isLoading: orgLoading } = useOrganization(orgId);
   const { data: membersData, isLoading: membersLoading } = useOrganizationMembers(orgId, membersPage);
@@ -185,7 +187,9 @@ export default function OrganizationPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Teams</CardTitle>
-                <Button>Create Team</Button>
+                <Button onClick={() => setIsCreateTeamDialogOpen(true)}>
+                  Create Team
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -274,6 +278,12 @@ export default function OrganizationPage() {
         orgId={orgId}
         open={isCreateProjectDialogOpen}
         onOpenChange={setIsCreateProjectDialogOpen}
+      />
+
+      <CreateTeamDialog
+        orgId={orgId}
+        open={isCreateTeamDialogOpen}
+        onOpenChange={setIsCreateTeamDialogOpen}
       />
     </div>
   );

@@ -164,3 +164,23 @@ export function useOrganizationProjects(orgId: string | null) {
     enabled: !!orgId,
   });
 }
+
+export interface CreateTeamInput {
+  name: string;
+  description?: string;
+}
+
+export function useCreateTeam(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateTeamInput) => {
+      const { data } = await api.post<{ team: OrgTeam }>(`/orgs/${orgId}/teams`, input);
+      return data.team;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'teams'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
+    },
+  });
+}
