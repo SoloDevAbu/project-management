@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CreateOrganizationDialog } from '@/components/organization/CreateOrganizationDialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -45,7 +46,14 @@ export default function HomePage() {
           {orgs.map((org) => (
             <Card key={org.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle>{org.name}</CardTitle>
+                <div className="flex items-center justify-start gap-2">
+                  <CardTitle>{org.name}</CardTitle>
+                  {org.userRole && (
+                    <Badge variant="outline" className="text-xs">
+                      {org.userRole}
+                    </Badge>
+                  )}
+                </div>
                 <CardDescription>
                   {org.legalName || 'No legal name'}
                 </CardDescription>
@@ -55,6 +63,11 @@ export default function HomePage() {
                   <p className="text-sm text-muted-foreground">
                     Status: {org.status}
                   </p>
+                  {org.userRole && (
+                    <p className="text-sm text-muted-foreground">
+                      Your Role: {org.userRole}
+                    </p>
+                  )}
                   {org._count?.members && (
                     <p className="text-sm text-muted-foreground">
                       Members: {org._count.members}

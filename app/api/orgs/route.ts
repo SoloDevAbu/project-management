@@ -42,7 +42,12 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ orgs: orgs.map((om) => om.org) });
+    return NextResponse.json({
+      orgs: orgs.map((om) => ({
+        ...om.org,
+        userRole: om.role,
+      })),
+    });
   } catch (error) {
     if (error instanceof Error) {
       return NextResponse.json(

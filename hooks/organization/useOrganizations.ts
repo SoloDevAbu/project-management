@@ -11,6 +11,7 @@ export interface Organization {
   contactPhone: string | null;
   status: string;
   createdAt: string;
+  userRole?: string;
   _count: {
     members: number;
     teams: number;
