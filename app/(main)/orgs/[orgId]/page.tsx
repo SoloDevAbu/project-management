@@ -19,12 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import Link from 'next/link';
+import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog';
 
 export default function OrganizationPage() {
   const params = useParams();
   const orgId = params.orgId as string;
   const [membersPage, setMembersPage] = useState(1);
+  const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
   
   const { data: org, isLoading: orgLoading } = useOrganization(orgId);
   const { data: membersData, isLoading: membersLoading } = useOrganizationMembers(orgId, membersPage);
@@ -228,8 +229,8 @@ export default function OrganizationPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Projects</CardTitle>
-                <Button asChild>
-                  <Link href={`/orgs/${orgId}/projects/new`}>Create Project</Link>
+                <Button onClick={() => setIsCreateProjectDialogOpen(true)}>
+                  Create Project
                 </Button>
               </div>
             </CardHeader>
@@ -268,6 +269,12 @@ export default function OrganizationPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CreateProjectDialog
+        orgId={orgId}
+        open={isCreateProjectDialogOpen}
+        onOpenChange={setIsCreateProjectDialogOpen}
+      />
     </div>
   );
 }

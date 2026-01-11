@@ -84,6 +84,8 @@ export function useCreateProject(orgId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
     },
   });
 }
