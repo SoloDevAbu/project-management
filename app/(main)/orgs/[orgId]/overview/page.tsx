@@ -223,7 +223,8 @@ export default function OrganizationPage() {
                   {teams.map((team) => (
                     <div
                       key={team.id}
-                      className="flex items-center justify-between p-4 border rounded"
+                      className="flex items-center justify-between p-4 border rounded cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => router.push(`/orgs/${orgId}/teams/${team.id}`)}
                     >
                       <div>
                         <p className="font-medium">{team.name}</p>
