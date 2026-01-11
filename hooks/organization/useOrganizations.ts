@@ -184,3 +184,64 @@ export function useCreateTeam(orgId: string) {
     },
   });
 }
+
+export interface SearchUserResult {
+  user: {
+    id: string;
+    email: string;
+    name?: string | null;
+    avatar?: string | null;
+  } | null;
+  exists: boolean;
+  isMember: boolean;
+  memberRole: string | null;
+}
+
+export interface InviteMemberInput {
+  email: string;
+  role: 'MAINTAINER' | 'MEMBER';
+}
+
+export interface InviteMemberResult {
+  member?: OrgMember;
+  invite?: {
+    id: string;
+    email: string;
+    role: string;
+    token: string;
+    expiresAt: string;
+  };
+  added: boolean;
+}
+
+export function useSearchUser(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { data } = await api.post<SearchUserResult>(
+        `/orgs/${orgId}/members/search`,
+        { email }
+      );
+      return data;
+    },
+  });
+}
+
+export function useInviteMember(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: InviteMemberInput) => {
+      const { data } = await api.post<InviteMemberResult>(
+        `/orgs/${orgId}/members/invite`,
+        input
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
+    },
+  });
+}

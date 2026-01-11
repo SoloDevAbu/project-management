@@ -91,6 +91,13 @@ enum OrgStatus {
   SUSPENDED
 }
 
+enum OrgInviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
 model User {
   id        String     @id @default(uuid())
   email     String     @unique
@@ -117,6 +124,8 @@ model User {
   projectUserLinks      ProjectUserLink[]
   inventoryLogUsers     InventoryLogUser[]
   auditLogs             AuditLog[]
+  sentInvites           OrgInvite[]    @relation("OrgInviter")
+  receivedInvites       OrgInvite[]    @relation("OrgInvitee")
 
   @@map("users")
 }
@@ -135,6 +144,7 @@ model Organization {
 
   creator      User      @relation("OrgCreator", fields: [createdBy], references: [id])
   members      OrgMember[]
+  invites      OrgInvite[]
   teams        Team[]
   projects     Project[]
   workLogs     WorkLog[]
@@ -157,6 +167,29 @@ model OrgMember {
 
   @@id([orgId, userId])
   @@map("org_members")
+}
+
+model OrgInvite {
+  id        String          @id @default(uuid())
+  orgId     String          @map("org_id")
+  email     String
+  role      OrgMemberRole   @default(MEMBER)
+  status    OrgInviteStatus @default(PENDING)
+  token     String          @unique
+  invitedBy String          @map("invited_by")
+  expiresAt DateTime        @map("expires_at")
+  createdAt DateTime        @default(now()) @map("created_at")
+  userId    String?         @map("user_id")
+
+  org       Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  inviter   User            @relation("OrgInviter", fields: [invitedBy], references: [id])
+  user      User?           @relation("OrgInvitee", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orgId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("org_invites")
 }
 
 model Team {
