@@ -10,7 +10,6 @@ const updateProjectSchema = z.object({
   status: z.enum(['PLANNED', 'IN_PROGRESS', 'HOLD', 'COMPLETED', 'CANCELLED']).optional(),
   startDate: z.string().datetime().optional(),
   deadline: z.string().datetime().optional(),
-  budgetTotal: z.number().optional(),
   currency: z.string().optional(),
 });
 
@@ -81,12 +80,6 @@ export async function GET(
             },
           },
         },
-        transactions: {
-          orderBy: {
-            datetime: 'desc',
-          },
-          take: 50,
-        },
         _count: {
           select: {
             children: true,
@@ -111,21 +104,7 @@ export async function GET(
       );
     }
 
-    const totalCost = project.transactions
-      .filter((t) => t.type === 'EXPENSE')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const totalBudget = project.transactions
-      .filter((t) => t.type === 'BUDGET_ADD')
-      .reduce((sum, t) => sum + Number(t.amount), Number(project.budgetTotal || 0));
-
-    return NextResponse.json({
-      project: {
-        ...project,
-        totalCost,
-        totalBudget,
-      },
-    });
+    return NextResponse.json({ project });
   } catch (error) {
     if (error instanceof Error && error.message === 'Access denied') {
       return NextResponse.json(
@@ -168,10 +147,9 @@ export async function PATCH(
       name?: string;
       code?: string;
       description?: string;
-      status?: string;
+      status?: 'PLANNED' | 'IN_PROGRESS' | 'HOLD' | 'COMPLETED' | 'CANCELLED';
       startDate?: Date | null;
       deadline?: Date | null;
-      budgetTotal?: number | null;
       currency?: string;
     } = {};
 
@@ -181,7 +159,6 @@ export async function PATCH(
     if (data.status) updateData.status = data.status;
     if (data.startDate) updateData.startDate = new Date(data.startDate);
     if (data.deadline) updateData.deadline = new Date(data.deadline);
-    if (data.budgetTotal !== undefined) updateData.budgetTotal = data.budgetTotal;
     if (data.currency) updateData.currency = data.currency;
 
     const updated = await prisma.project.update({
@@ -193,7 +170,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Invalid input', details: error.issues },
         { status: 400 }
       );
     }
@@ -220,3 +197,48 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ orgId: string; projectId: string }> }
+) {
+  try {
+    const { orgId, projectId } = await params;
+    const user = await requireAuth();
+    await requireOrgRole(orgId, user.id, ['ADMIN', 'MAINTAINER']);
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { orgId: true },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    if (project.orgId !== orgId) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    await prisma.project.delete({
+      where: { id: projectId },
+    });
+
+    return NextResponse.json({ message: 'Project deleted successfully' }, { status: 200 });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Access denied' || error.message === 'Insufficient permissions') {
+        return NextResponse.json({ error: error.message }, { status: 403 });
+      }
+    }
+    return NextResponse.json(
+      { error: 'Failed to delete project' },
+      { status: 500 }
+    );
+  }
+}

@@ -270,7 +270,8 @@ export default function OrganizationPage() {
                   {projects.map((project) => (
                     <div
                       key={project.id}
-                      className="flex items-center justify-between p-4 border rounded"
+                      className="flex items-center justify-between p-4 border rounded cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => router.push(`/orgs/${orgId}/projects/${project.id}/dashboard`)}
                     >
                       <div>
                         <p className="font-medium">{project.name}</p>

@@ -108,3 +108,17 @@ export function useUpdateProject(orgId: string, projectId: string) {
   });
 }
 
+export function useDeleteProject(orgId: string, projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      await api.delete(`/orgs/${orgId}/projects/${projectId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
+    },
+  });
+}
