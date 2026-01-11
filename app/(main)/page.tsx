@@ -74,7 +74,7 @@ export default function HomePage() {
                     </p>
                   )}
                   <Button asChild className="w-full mt-4">
-                    <Link href={`/orgs/${org.id}`}>View Organization</Link>
+                    <Link href={`/orgs/${org.id}/overview`}>View Organization</Link>
                   </Button>
                 </div>
               </CardContent>
