@@ -11,7 +11,7 @@ export interface Organization {
   contactPhone: string | null;
   status: string;
   createdAt: string;
-  userRole?: string;
+  userRole: string;
   _count: {
     members: number;
     teams: number;
@@ -244,5 +244,18 @@ export function useInviteMember(orgId: string) {
       queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'members'] });
       queryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
     },
+  });
+}
+
+export function useUserRole(orgId: string | null) {
+  return useQuery({
+    queryKey: ['organizations', orgId, 'role'],
+    queryFn: async () => {
+      if (!orgId) return null;
+      const { data } = await api.get<{ role: string }>(`/orgs/${orgId}/role`);
+      return data.role;
+    },
+    enabled: !!orgId,
+    retry: false,
   });
 }

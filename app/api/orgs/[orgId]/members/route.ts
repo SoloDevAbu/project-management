@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { requireAuth, requireOrgAccess } from '@/lib/auth';
+import { requireAuth, requireOrgAccess, requireOrgRole } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { orgId } = await params;
     const user = await requireAuth();
-    await requireOrgAccess(orgId, user.id);
+    await requireOrgRole(orgId, user.id, ['ADMIN', 'MAINTAINER']);
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -52,11 +52,19 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Access denied') {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+    if (error instanceof Error) {
+      if (error.message === 'Access denied') {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+      if (error.message === 'Insufficient permissions') {
+        return NextResponse.json(
+          { error: 'Insufficient permissions' },
+          { status: 403 }
+        );
+      }
     }
 
     return NextResponse.json(

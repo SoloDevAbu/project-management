@@ -34,6 +34,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       window.location.href = '/signin';
     }
+    if (error.response?.status === 403) {
+      const errorMessage = error.response?.data?.error || 'Access denied';
+      if (errorMessage === 'Insufficient permissions' || errorMessage === 'Access denied') {
+        console.error('Access denied:', errorMessage);
+      }
+    }
     return Promise.reject(error);
   }
 );

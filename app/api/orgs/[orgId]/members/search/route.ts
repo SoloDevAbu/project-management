@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAuth, requireOrgAccess } from '@/lib/auth';
+import { requireAuth, requireOrgAccess, requireOrgRole } from '@/lib/auth';
 
 const searchUserSchema = z.object({
   email: z.string().email(),
@@ -14,7 +14,7 @@ export async function POST(
   try {
     const { orgId } = await params;
     const user = await requireAuth();
-    await requireOrgAccess(orgId, user.id);
+    await requireOrgRole(orgId, user.id, ['ADMIN']);
 
     const body = await request.json();
     const data = searchUserSchema.parse(body);
@@ -56,11 +56,19 @@ export async function POST(
       );
     }
 
-    if (error instanceof Error && error.message === 'Access denied') {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+    if (error instanceof Error) {
+      if (error.message === 'Access denied') {
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+      if (error.message === 'Insufficient permissions') {
+        return NextResponse.json(
+          { error: 'Insufficient permissions' },
+          { status: 403 }
+        );
+      }
     }
 
     return NextResponse.json(

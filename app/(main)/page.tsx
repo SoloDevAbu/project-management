@@ -10,6 +10,13 @@ import Link from 'next/link';
 import { CreateOrganizationDialog } from '@/components/organization/CreateOrganizationDialog';
 import { Badge } from '@/components/ui/badge';
 
+function getOrgRoute(orgId: string, userRole: string) {
+  if (userRole === 'ADMIN' || userRole === 'MAINTAINER') {
+    return `/orgs/${orgId}/overview`;
+  }
+  return `/orgs/${orgId}/my-work`;
+}
+
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -74,7 +81,7 @@ export default function HomePage() {
                     </p>
                   )}
                   <Button asChild className="w-full mt-4">
-                    <Link href={`/orgs/${org.id}/overview`}>View Organization</Link>
+                    <Link href={getOrgRoute(org.id, org.userRole)}>View Organization</Link>
                   </Button>
                 </div>
               </CardContent>

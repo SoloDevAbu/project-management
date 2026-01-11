@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   useOrganization,
   useOrganizationMembers,
   useOrganizationTeams,
   useOrganizationProjects,
+  useUserRole,
 } from '@/hooks/organization/useOrganizations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,6 +26,7 @@ import { InviteMemberDialog } from '@/components/organization/InviteMemberDialog
 
 export default function OrganizationPage() {
   const params = useParams();
+  const router = useRouter();
   const orgId = params.orgId as string;
   const [membersPage, setMembersPage] = useState(1);
   const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
@@ -32,16 +34,33 @@ export default function OrganizationPage() {
   const [isInviteMemberDialogOpen, setIsInviteMemberDialogOpen] = useState(false);
   
   const { data: org, isLoading: orgLoading } = useOrganization(orgId);
+  const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
   const { data: membersData, isLoading: membersLoading } = useOrganizationMembers(orgId, membersPage);
   const { data: teams, isLoading: teamsLoading } = useOrganizationTeams(orgId);
   const { data: projects, isLoading: projectsLoading } = useOrganizationProjects(orgId);
 
-  if (orgLoading) {
+  useEffect(() => {
+    if (!roleLoading && userRole) {
+      if (userRole === 'MEMBER') {
+        router.replace(`/orgs/${orgId}/my-work`);
+      }
+    }
+  }, [userRole, roleLoading, orgId, router]);
+
+  if (orgLoading || roleLoading) {
     return <div>Loading...</div>;
   }
 
   if (!org) {
     return <div>Organization not found</div>;
+  }
+
+  if (userRole === 'MEMBER') {
+    return <div>Redirecting...</div>;
+  }
+
+  if (userRole !== 'ADMIN' && userRole !== 'MAINTAINER') {
+    return <div>Access denied. Insufficient permissions.</div>;
   }
 
   return (
