@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAuth, requireOrgAccess } from '@/lib/auth';
+import type { Prisma } from '@/app/generated/prisma/client';
 
 const createTaskSchema = z.object({
-  projectId: z.string().uuid(),
   parentId: z.string().uuid().optional(),
   title: z.string().min(1),
   description: z.string().optional(),
@@ -13,44 +13,56 @@ const createTaskSchema = z.object({
   priority: z.enum(['P0', 'P1', 'P2', 'P3', 'P4']).optional(),
   assigneeUserId: z.string().uuid().optional(),
   reviewerUserId: z.string().uuid().optional(),
-  assignmentDt: z.string().datetime().optional(),
-  startDt: z.string().datetime().optional(),
-  endDt: z.string().datetime().optional(),
-  deadlineDt: z.string().datetime().optional(),
-  budgetAmount: z.number().optional(),
-  currency: z.string().default('USD'),
+  // Allow any non-empty string; we convert to Date and let the DB enforce validity.
+  assignmentDt: z.string().optional(),
+  startDt: z.string().optional(),
+  endDt: z.string().optional(),
+  deadlineDt: z.string().optional(),
 });
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
+  { params }: { params: Promise<{ orgId: string; projectId: string }> }
 ) {
   try {
-    const { orgId } = await params;
+    const { orgId, projectId } = await params;
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
 
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get('projectId');
     const parentTaskId = searchParams.get('parentTaskId');
     const status = searchParams.get('status');
     const assigneeId = searchParams.get('assigneeId');
 
-    const where: {
-      project: { orgId: string };
-      projectId?: string;
-      parentId?: string | null;
-      status?: string;
-      assigneeUserId?: string;
-    } = {
-      project: { orgId },
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { orgId: true },
+    });
+
+    if (!project || project.orgId !== orgId) {
+      return NextResponse.json(
+        { error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
+    const where: Prisma.TaskWhereInput = {
+      projectId,
     };
 
-    if (projectId) where.projectId = projectId;
-    if (parentTaskId) where.parentId = parentTaskId;
-    else if (parentTaskId === null) where.parentId = null;
-    if (status) where.status = status;
-    if (assigneeId) where.assigneeUserId = assigneeId;
+    if (parentTaskId) {
+      where.parentId = parentTaskId;
+    } else if (parentTaskId === '') {
+      where.parentId = null;
+    }
+
+    if (status) {
+      where.status = status as Prisma.TaskWhereInput['status'];
+    }
+
+    if (assigneeId) {
+      where.assigneeUserId = assigneeId;
+    }
 
     const tasks = await prisma.task.findMany({
       where,
@@ -109,10 +121,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ orgId: string }> }
+  { params }: { params: Promise<{ orgId: string; projectId: string }> }
 ) {
   try {
-    const { orgId } = await params;
+    const { orgId, projectId } = await params;
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
 
@@ -120,7 +132,8 @@ export async function POST(
     const data = createTaskSchema.parse(body);
 
     const project = await prisma.project.findUnique({
-      where: { id: data.projectId },
+      where: { id: projectId },
+      select: { orgId: true },
     });
 
     if (!project || project.orgId !== orgId) {
@@ -133,9 +146,10 @@ export async function POST(
     if (data.parentId) {
       const parent = await prisma.task.findUnique({
         where: { id: data.parentId },
+        select: { projectId: true },
       });
 
-      if (!parent || parent.projectId !== data.projectId) {
+      if (!parent || parent.projectId !== projectId) {
         return NextResponse.json(
           { error: 'Invalid parent task' },
           { status: 400 }
@@ -145,7 +159,7 @@ export async function POST(
 
     const task = await prisma.task.create({
       data: {
-        projectId: data.projectId,
+        projectId,
         parentId: data.parentId,
         title: data.title,
         description: data.description,
@@ -158,8 +172,6 @@ export async function POST(
         startDt: data.startDt ? new Date(data.startDt) : null,
         endDt: data.endDt ? new Date(data.endDt) : null,
         deadlineDt: data.deadlineDt ? new Date(data.deadlineDt) : null,
-        budgetAmount: data.budgetAmount,
-        currency: data.currency,
         createdBy: user.id,
       },
       include: {
@@ -191,7 +203,7 @@ export async function POST(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Invalid input', details: error.issues },
         { status: 400 }
       );
     }
@@ -209,4 +221,3 @@ export async function POST(
     );
   }
 }
-

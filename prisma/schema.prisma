@@ -293,8 +293,6 @@ model Task {
   deadlineDt      DateTime?     @map("deadline_dt")
   assigneeUserId  String?       @map("assignee_user_id")
   reviewerUserId  String?       @map("reviewer_user_id")
-  budgetAmount    Decimal?      @map("budget_amount") @db.Decimal(15, 2)
-  currency        String        @default("USD")
   createdBy       String        @map("created_by")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")

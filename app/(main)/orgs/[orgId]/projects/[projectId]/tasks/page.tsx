@@ -24,8 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
+import { ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 
 export default function ProjectTasksPage() {
   const params = useParams();
@@ -45,10 +45,13 @@ export default function ProjectTasksPage() {
   const { data: userRole } = useUserRole(orgId);
   const isAdminOrMaintainer = userRole === 'ADMIN' || userRole === 'MAINTAINER';
 
-  const { data: tasks, isLoading } = useTasks(orgId, {
-    projectId,
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  const { data: tasks, isLoading } = useTasks(orgId, projectId, {
     status: statusFilter !== 'all' ? statusFilter : undefined,
   });
+
+  const projectTasks = tasks?.filter((t) => t.projectId === projectId) || [];
 
   const filteredTasks = tasks
     ? tasks
@@ -92,7 +95,7 @@ export default function ProjectTasksPage() {
   const paginatedTasks = filteredTasks.slice(startIndex, startIndex + tasksPerPage);
 
   const uniqueAssignees = Array.from(
-    new Set(tasks?.map((task) => task.assigneeUserId).filter(Boolean) || [])
+    new Set(tasks?.map((task) => task.assigneeUserId).filter((id): id is string => !!id) || [])
   );
 
   useEffect(() => {
@@ -150,10 +153,9 @@ export default function ProjectTasksPage() {
           <div className="flex items-center justify-between">
             <CardTitle>Tasks</CardTitle>
             {isAdminOrMaintainer && (
-              <Button asChild>
-                <Link href={`/orgs/${orgId}/projects/${projectId}/tasks/new`}>
-                  Create Task
-                </Link>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Task
               </Button>
             )}
           </div>
@@ -204,9 +206,10 @@ export default function ProjectTasksPage() {
                     <SelectItem value="all">All Assignees</SelectItem>
                     {uniqueAssignees.map((assigneeId) => {
                       const task = tasks?.find((t) => t.assigneeUserId === assigneeId);
+                      const displayName = task?.assignee?.name || task?.assignee?.email || 'Unassigned';
                       return (
                         <SelectItem key={assigneeId} value={assigneeId}>
-                          {task?.assignee?.name || task?.assignee?.email || 'Unassigned'}
+                          {displayName}
                         </SelectItem>
                       );
                     })}
@@ -272,7 +275,7 @@ export default function ProjectTasksPage() {
                           key={task.id}
                           className="cursor-pointer"
                           onClick={() =>
-                            router.push(`/orgs/${orgId}/tasks/${task.id}`)
+                            router.push(`/orgs/${orgId}/projects/${projectId}/tasks/${task.id}`)
                           }
                         >
                           <TableCell>
@@ -336,6 +339,17 @@ export default function ProjectTasksPage() {
           </div>
         </CardContent>
       </Card>
+
+      <CreateTaskDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        orgId={orgId}
+        projectId={projectId}
+        projectTasks={projectTasks.map((task) => ({
+          id: task.id,
+          title: task.title || '',
+        }))}
+      />
     </div>
   );
 }

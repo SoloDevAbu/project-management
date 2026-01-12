@@ -15,16 +15,14 @@ const updateTaskSchema = z.object({
   startDt: z.string().datetime().optional().nullable(),
   endDt: z.string().datetime().optional().nullable(),
   deadlineDt: z.string().datetime().optional().nullable(),
-  budgetAmount: z.number().optional().nullable(),
-  currency: z.string().optional(),
 });
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ orgId: string; taskId: string }> }
+  { params }: { params: Promise<{ orgId: string; projectId: string; taskId: string }> }
 ) {
   try {
-    const { orgId, taskId } = await params;
+    const { orgId, projectId, taskId } = await params;
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
 
@@ -101,11 +99,6 @@ export async function GET(
             segments: true,
           },
         },
-        transactions: {
-          orderBy: {
-            datetime: 'desc',
-          },
-        },
       },
     });
 
@@ -116,7 +109,7 @@ export async function GET(
       );
     }
 
-    if (task.project.orgId !== orgId) {
+    if (task.project.orgId !== orgId || task.projectId !== projectId) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
@@ -141,10 +134,10 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ orgId: string; taskId: string }> }
+  { params }: { params: Promise<{ orgId: string; projectId: string; taskId: string }> }
 ) {
   try {
-    const { orgId, taskId } = await params;
+    const { orgId, projectId, taskId } = await params;
     const user = await requireAuth();
     await requireOrgAccess(orgId, user.id);
 
@@ -154,11 +147,15 @@ export async function PATCH(
     const task = await prisma.task.findUnique({
       where: { id: taskId },
       include: {
-        project: true,
+        project: {
+          select: {
+            orgId: true,
+          },
+        },
       },
     });
 
-    if (!task || task.project.orgId !== orgId) {
+    if (!task || task.project.orgId !== orgId || task.projectId !== projectId) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
@@ -177,8 +174,6 @@ export async function PATCH(
       startDt?: Date | null;
       endDt?: Date | null;
       deadlineDt?: Date | null;
-      budgetAmount?: number | null;
-      currency?: string;
     } = {};
 
     if (data.title) updateData.title = data.title;
@@ -186,8 +181,6 @@ export async function PATCH(
     if (data.type) updateData.type = data.type;
     if (data.status) updateData.status = data.status;
     if (data.priority) updateData.priority = data.priority;
-    if (data.currency) updateData.currency = data.currency;
-    if (data.budgetAmount !== undefined) updateData.budgetAmount = data.budgetAmount;
 
     if (data.assigneeUserId !== undefined) {
       const oldAssignee = task.assigneeUserId;
@@ -243,7 +236,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input', details: error.errors },
+        { error: 'Invalid input', details: error.issues },
         { status: 400 }
       );
     }
@@ -261,4 +254,3 @@ export async function PATCH(
     );
   }
 }
-
