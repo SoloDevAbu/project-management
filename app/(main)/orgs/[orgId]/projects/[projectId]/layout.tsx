@@ -20,7 +20,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, CheckSquare, Clock, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Clock, FileText, Settings, Users } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -87,6 +87,11 @@ export default function ProjectLayout({
     },
     ...(isAdminOrMaintainer
       ? [
+          {
+            title: 'Teams',
+            icon: Users,
+            href: `${basePath}/teams`,
+          },
           {
             title: 'Settings',
             icon: Settings,
