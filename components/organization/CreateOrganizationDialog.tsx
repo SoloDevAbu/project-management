@@ -70,7 +70,7 @@ export function CreateOrganizationDialog({
 
       reset();
       onOpenChange(false);
-      router.push(`/orgs/${org.id}`);
+      router.push(`/orgs/${org.id}/overview`);
     } catch (error) {
       console.error('Failed to create organization:', error);
     }
