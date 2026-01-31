@@ -1,14 +1,31 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useTask, type TaskDetail } from '@/hooks/tasks/useTasks';
+import {
+  useTask,
+  useTasks,
+  useUpdateTaskAssignee,
+  useUpdateTaskReviewer,
+  useAddTaskDependency,
+  useRemoveTaskDependency,
+  type TaskDetail,
+} from '@/hooks/tasks/useTasks';
 import { useUserRole } from '@/hooks/organization';
+import { useProjectTeamMembers } from '@/hooks/organization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
+import { ArrowLeft, Pencil, UserPlus, UserCheck, Link2, X } from 'lucide-react';
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -23,8 +40,24 @@ export default function TaskDetailPage() {
   const projectId = params.projectId as string;
   const taskId = params.taskId as string;
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [blockedByTaskId, setBlockedByTaskId] = useState<string>('');
+
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
   const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
+  const { data: projectTasks } = useTasks(orgId, projectId);
+  const { data: teamMembersData } = useProjectTeamMembers(orgId, projectId);
+  const updateAssignee = useUpdateTaskAssignee(orgId, projectId, taskId);
+  const updateReviewer = useUpdateTaskReviewer(orgId, projectId, taskId);
+  const addDependency = useAddTaskDependency(orgId, projectId, taskId);
+  const removeDependency = useRemoveTaskDependency(orgId, projectId, taskId);
+
+  const members = teamMembersData?.members ?? [];
+  const detail = task as TaskDetail;
+  const blockedByIds = new Set(detail.dependencies?.map((d) => d.blockedByTask.id) ?? []);
+  const availableBlockingTasks = (projectTasks ?? []).filter(
+    (t) => t.id !== taskId && !blockedByIds.has(t.id)
+  );
 
   useEffect(() => {
     if (roleLoading || userRole === undefined) return;
@@ -65,18 +98,28 @@ export default function TaskDetailPage() {
     );
   }
 
-  const detail = task as TaskDetail;
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <Button asChild variant="ghost" size="sm">
           <Link href={`/orgs/${orgId}/projects/${projectId}/tasks`}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to tasks
           </Link>
         </Button>
+        <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+          <Pencil className="h-4 w-4 mr-2" />
+          Edit task
+        </Button>
       </div>
+
+      <EditTaskDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        orgId={orgId}
+        projectId={projectId}
+        task={task}
+      />
 
       <Card>
         <CardHeader>
@@ -104,16 +147,44 @@ export default function TaskDetailPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Assignee</p>
-              <p className="text-sm">
-                {task.assignee ? task.assignee.name || task.assignee.email : '—'}
-              </p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Assignee</p>
+              <Select
+                value={task.assigneeUserId ?? 'none'}
+                onValueChange={(v) => updateAssignee.mutate(v === 'none' ? null : v)}
+                disabled={updateAssignee.isPending}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.user.id} value={m.user.id}>
+                      {m.user.name || m.user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">Reviewer</p>
-              <p className="text-sm">
-                {task.reviewer ? task.reviewer.name || task.reviewer.email : '—'}
-              </p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Reviewer</p>
+              <Select
+                value={task.reviewerUserId ?? 'none'}
+                onValueChange={(v) => updateReviewer.mutate(v === 'none' ? null : v)}
+                disabled={updateReviewer.isPending}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="No reviewer" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No reviewer</SelectItem>
+                  {members.map((m) => (
+                    <SelectItem key={m.user.id} value={m.user.id}>
+                      {m.user.name || m.user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Deadline</p>
@@ -177,28 +248,74 @@ export default function TaskDetailPage() {
             </div>
           )}
 
-          {detail.dependencies && detail.dependencies.length > 0 && (
-            <div>
-              <h3 className="font-medium mb-2">Blocked by</h3>
-              <ul className="space-y-1">
+          <div>
+            <h3 className="font-medium mb-2">Blocked by</h3>
+            {detail.dependencies && detail.dependencies.length > 0 ? (
+              <ul className="space-y-2">
                 {detail.dependencies.map((d) => (
-                  <li key={d.blockedByTask.id}>
-                    <Link
-                      href={`/orgs/${orgId}/projects/${projectId}/tasks/${d.blockedByTask.id}`}
-                      className="text-sm text-primary hover:underline"
+                  <li
+                    key={d.blockedByTask.id}
+                    className="flex items-center justify-between gap-2 py-1"
+                  >
+                    <div>
+                      <Link
+                        href={`/orgs/${orgId}/projects/${projectId}/tasks/${d.blockedByTask.id}`}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        {d.blockedByTask.title}
+                      </Link>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {d.blockedByTask.status}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeDependency.mutate(d.blockedByTask.id)}
+                      disabled={removeDependency.isPending}
                     >
-                      {d.blockedByTask.title}
-                    </Link>
-                    <span className="text-xs text-muted-foreground ml-2">
-                      {d.blockedByTask.status}
-                    </span>
+                      <X className="h-4 w-4" />
+                    </Button>
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-muted-foreground">Not blocked by any task</p>
+            )}
+            {availableBlockingTasks.length > 0 && (
+              <div className="flex gap-2 mt-2">
+                <Select value={blockedByTaskId} onValueChange={setBlockedByTaskId}>
+                  <SelectTrigger className="w-[280px]">
+                    <SelectValue placeholder="Add blocked by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableBlockingTasks.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (blockedByTaskId) {
+                      addDependency.mutate(blockedByTaskId, {
+                        onSuccess: () => setBlockedByTaskId(''),
+                      });
+                    }
+                  }}
+                  disabled={!blockedByTaskId || addDependency.isPending}
+                >
+                  <Link2 className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
 
-          {detail.workLogs && detail.workLogs.length > 0 && (
+          {detail?.workLogs && detail.workLogs.length > 0 && (
             <div>
               <h3 className="font-medium mb-2">Work logs</h3>
               <ul className="space-y-2 border rounded-md divide-y">

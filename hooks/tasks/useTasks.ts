@@ -132,6 +132,18 @@ export function useCreateTask(orgId: string, projectId: string) {
   });
 }
 
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string;
+  type?: string;
+  status?: string;
+  priority?: string;
+  assignmentDt?: string | null;
+  startDt?: string | null;
+  endDt?: string | null;
+  deadlineDt?: string | null;
+}
+
 export function useUpdateTask(
   orgId: string,
   projectId: string,
@@ -140,12 +152,78 @@ export function useUpdateTask(
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: Partial<CreateTaskInput & { assigneeUserId?: string | null; reviewerUserId?: string | null }>) => {
+    mutationFn: async (input: UpdateTaskInput) => {
       const { data } = await api.patch<{ task: Task }>(
         `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}`,
         input
       );
       return data.task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId, taskId] });
+    },
+  });
+}
+
+export function useUpdateTaskAssignee(orgId: string, projectId: string, taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (assigneeUserId: string | null) => {
+      const { data } = await api.patch<{ task: Task }>(
+        `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}/assignee`,
+        { assigneeUserId }
+      );
+      return data.task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId, taskId] });
+    },
+  });
+}
+
+export function useUpdateTaskReviewer(orgId: string, projectId: string, taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (reviewerUserId: string | null) => {
+      const { data } = await api.patch<{ task: Task }>(
+        `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}/reviewer`,
+        { reviewerUserId }
+      );
+      return data.task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId, taskId] });
+    },
+  });
+}
+
+export function useAddTaskDependency(orgId: string, projectId: string, taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (blockedByTaskId: string) => {
+      const { data } = await api.post<{ dependency: { blockedByTask: { id: string; title: string; status: string } } }>(
+        `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}/dependencies`,
+        { blockedByTaskId }
+      );
+      return data.dependency;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId, taskId] });
+    },
+  });
+}
+
+export function useRemoveTaskDependency(orgId: string, projectId: string, taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (blockedByTaskId: string) => {
+      await api.delete(
+        `/orgs/${orgId}/projects/${projectId}/tasks/${taskId}/dependencies/${blockedByTaskId}`
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks', orgId, projectId] });

@@ -9,8 +9,6 @@ const updateTaskSchema = z.object({
   type: z.enum(['BUG', 'FEATURE', 'TASK', 'CHANGE', 'RESEARCH', 'OTHER']).optional(),
   status: z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'BLOCKED', 'REVIEW', 'DONE', 'ARCHIVED']).optional(),
   priority: z.enum(['P0', 'P1', 'P2', 'P3', 'P4']).optional(),
-  assigneeUserId: z.string().uuid().optional().nullable(),
-  reviewerUserId: z.string().uuid().optional().nullable(),
   assignmentDt: z.string().datetime().optional().nullable(),
   startDt: z.string().datetime().optional().nullable(),
   endDt: z.string().datetime().optional().nullable(),
@@ -185,19 +183,6 @@ export async function PATCH(
       if (data.startDt !== undefined) updateData.startDt = toDateOrNull(data.startDt);
       if (data.endDt !== undefined) updateData.endDt = toDateOrNull(data.endDt);
       if (data.deadlineDt !== undefined) updateData.deadlineDt = toDateOrNull(data.deadlineDt);
-
-      if (data.assigneeUserId !== undefined && data.assigneeUserId !== task.assigneeUserId) {
-        updateData.assigneeUserId = data.assigneeUserId;
-        await prisma.taskAssigneeTransfer.create({
-          data: { taskId, fromUserId: task.assigneeUserId, toUserId: data.assigneeUserId, changedBy: user.id },
-        });
-      }
-      if (data.reviewerUserId !== undefined && data.reviewerUserId !== task.reviewerUserId) {
-        updateData.reviewerUserId = data.reviewerUserId;
-        await prisma.taskReviewerTransfer.create({
-          data: { taskId, fromUserId: task.reviewerUserId, toUserId: data.reviewerUserId, changedBy: user.id },
-        });
-      }
     }
 
     const updated = await prisma.task.update({
