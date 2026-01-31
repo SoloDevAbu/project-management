@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/tasks/useTasks';
-import { useUserRole } from '@/hooks/organization/useOrganizations';
+import { useUserRole } from '@/hooks/organization';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

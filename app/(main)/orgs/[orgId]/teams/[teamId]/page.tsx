@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useOrganization, useUserRole } from '@/hooks/organization/useOrganizations';
+import { useOrganization, useUserRole } from '@/hooks/organization';
 import {
   useTeam,
   useTeamMembers,
@@ -12,7 +12,7 @@ import {
   useAddTeamMember,
   useRemoveTeamMember,
 } from '@/hooks/teams/useTeams';
-import { useOrganizationMembers } from '@/hooks/organization/useOrganizations';
+import { useOrganizationMembers } from '@/hooks/organization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';

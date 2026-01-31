@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateTask } from '@/hooks/tasks/useTasks';
-import { useProjectTeamMembers } from '@/hooks/organization/useOrganizations';
+import { useProjectTeamMembers } from '@/hooks/organization';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

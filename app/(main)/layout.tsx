@@ -4,7 +4,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useOrganizations } from '@/hooks/organization/useOrganizations';
+import { useOrganizations } from '@/hooks/organization';
 
 export default function MainLayout({
   children,

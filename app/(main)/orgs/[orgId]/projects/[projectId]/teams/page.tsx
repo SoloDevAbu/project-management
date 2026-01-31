@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProjectTeams, useAssignTeamToProject, useRemoveTeamFromProject } from '@/hooks/projects/useProjects';
-import { useOrganizationTeams } from '@/hooks/organization/useOrganizations';
-import { useUserRole } from '@/hooks/organization/useOrganizations';
+import { useOrganizationTeams, useUserRole } from '@/hooks/organization';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

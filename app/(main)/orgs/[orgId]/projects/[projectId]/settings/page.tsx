@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useProject, useUpdateProject, useDeleteProject } from '@/hooks/projects/useProjects';
-import { useUserRole } from '@/hooks/organization/useOrganizations';
+import { useUserRole } from '@/hooks/organization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

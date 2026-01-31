@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useWorkLogs } from '@/hooks/work-logs/useWorkLogs';
-import { useOrganizationMembers } from '@/hooks/organization/useOrganizations';
+import { useOrganizationMembers } from '@/hooks/organization';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
