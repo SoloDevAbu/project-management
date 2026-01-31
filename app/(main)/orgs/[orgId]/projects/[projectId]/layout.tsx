@@ -2,7 +2,7 @@
 
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useProject } from '@/hooks/projects/useProjects';
+import { useProject } from '@/hooks/projects';
 import { useUserRole } from '@/hooks/organization';
 import {
   Sidebar,

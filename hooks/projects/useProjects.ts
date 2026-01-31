@@ -1,45 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/axios';
-
-export interface Project {
-  id: string;
-  orgId: string;
-  parentId?: string | null;
-  name: string;
-  code: string;
-  description?: string | null;
-  status: string;
-  startDate?: string | null;
-  deadline?: string | null;
-  costToDate: number;
-  budgetTotal?: number | null;
-  currency: string;
-  createdAt: string;
-  updatedAt: string;
-  parent?: {
-    id: string;
-    name: string;
-    code: string;
-  };
-  _count?: {
-    children: number;
-    tasks: number;
-    teamLinks: number;
-    userLinks: number;
-  };
-}
-
-export interface CreateProjectInput {
-  name: string;
-  code: string;
-  description?: string;
-  parentId?: string;
-  status?: string;
-  startDate?: string;
-  deadline?: string;
-  budgetTotal?: number;
-  currency?: string;
-}
+import type { Project, CreateProjectInput } from './types';
 
 export function useProjects(orgId: string | null, parentId?: string | null) {
   return useQuery({
@@ -119,62 +80,6 @@ export function useDeleteProject(orgId: string, projectId: string) {
       queryClient.invalidateQueries({ queryKey: ['projects', orgId] });
       queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects'] });
       queryClient.invalidateQueries({ queryKey: ['organizations', orgId] });
-    },
-  });
-}
-
-export interface ProjectTeam {
-  id: string;
-  name: string;
-  description?: string | null;
-  createdAt: string;
-  _count: {
-    members: number;
-  };
-}
-
-export function useProjectTeams(orgId: string | null, projectId: string | null) {
-  return useQuery({
-    queryKey: ['projects', orgId, projectId, 'teams'],
-    queryFn: async () => {
-      if (!orgId || !projectId) return [];
-      const { data } = await api.get<{ teams: ProjectTeam[] }>(
-        `/orgs/${orgId}/projects/${projectId}/teams`
-      );
-      return data.teams;
-    },
-    enabled: !!orgId && !!projectId,
-  });
-}
-
-export function useAssignTeamToProject(orgId: string, projectId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (teamId: string) => {
-      const { data } = await api.post<{ team: ProjectTeam }>(
-        `/orgs/${orgId}/projects/${projectId}/teams`,
-        { teamId }
-      );
-      return data.team;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId, 'teams'] });
-      queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId] });
-    },
-  });
-}
-
-export function useRemoveTeamFromProject(orgId: string, projectId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (teamId: string) => {
-      await api.delete(`/orgs/${orgId}/projects/${projectId}/teams?teamId=${teamId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId, 'teams'] });
-      queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId] });
     },
   });
 }

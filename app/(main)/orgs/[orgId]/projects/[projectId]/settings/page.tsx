@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useProject, useUpdateProject, useDeleteProject } from '@/hooks/projects/useProjects';
+import { useProject, useUpdateProject, useDeleteProject } from '@/hooks/projects';
 import { useUserRole } from '@/hooks/organization';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
