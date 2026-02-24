@@ -16,7 +16,7 @@ export default function MainLayout({
   const pathname = usePathname();
   const { data: orgs } = useOrganizations();
 
-  const isProjectRoute = pathname?.includes('/projects/');
+  const isSidebarRoute = pathname?.includes('/projects/') || pathname?.includes('/my-work/');
 
   if (status === 'loading') {
     return <div>Loading...</div>;
@@ -29,7 +29,7 @@ export default function MainLayout({
 
   return (
     <div className="min-h-screen ">
-      {!isProjectRoute && (
+      {!isSidebarRoute && (
         <nav className="border-b">
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
             <div className="flex items-center gap-6">
