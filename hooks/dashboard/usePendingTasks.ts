@@ -41,9 +41,18 @@ export interface PendingTask {
     };
 }
 
+export interface PendingTasksResponse {
+    tasks: PendingTask[];
+    total: number;
+    page: number;
+    totalPages: number;
+}
+
 export function usePendingTasks(filters?: {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
 }) {
     return useQuery({
         queryKey: ['pending-tasks', filters],
@@ -51,11 +60,13 @@ export function usePendingTasks(filters?: {
             const params = new URLSearchParams();
             if (filters?.sortBy) params.set('sortBy', filters.sortBy);
             if (filters?.sortOrder) params.set('sortOrder', filters.sortOrder);
+            if (filters?.page) params.set('page', String(filters.page));
+            if (filters?.limit) params.set('limit', String(filters.limit));
 
-            const { data } = await api.get<{ tasks: PendingTask[] }>(
+            const { data } = await api.get<PendingTasksResponse>(
                 `/pending-tasks?${params.toString()}`
             );
-            return data.tasks;
+            return data;
         },
     });
 }

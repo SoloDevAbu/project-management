@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 function getTaskRoute(task: PendingTask): string {
   const { project, userRole } = task;
@@ -31,11 +31,9 @@ function getTaskRoute(task: PendingTask): string {
   const projectId = project.id;
 
   if (userRole === 'ADMIN' || userRole === 'MAINTAINER') {
-    // Admin/Maintainer → go to task detail page
     return `/orgs/${orgId}/projects/${projectId}/tasks/${task.id}`;
   }
-  // Member → go to my-work tasks list
-  return `/orgs/${orgId}/my-work/${projectId}/tasks`;
+  return `/orgs/${orgId}/my-work/${projectId}/tasks/${task.id}`;
 }
 
 export default function PendingTasksPage() {
@@ -49,9 +47,19 @@ export default function PendingTasksPage() {
   const [sortBy, setSortBy] = useState<'priority' | 'deadline' | 'created'>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const { data: tasks, isLoading } = usePendingTasks({ sortBy, sortOrder });
+  const { data: tasksData, isLoading } = usePendingTasks({
+    sortBy,
+    sortOrder,
+    page,
+    limit: 10,
+  });
 
-  const filteredTasks = (tasks ?? []).filter((task) => {
+  const tasks = tasksData?.tasks ?? [];
+  const totalPages = tasksData?.totalPages ?? 0;
+  const currentPage = tasksData?.page ?? 1;
+
+  // Client-side filtering for search, org, priority
+  const filteredTasks = tasks.filter((task) => {
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
       if (
@@ -70,21 +78,16 @@ export default function PendingTasksPage() {
     return true;
   });
 
-  const tasksPerPage = 10;
-  const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
-  const startIndex = (page - 1) * tasksPerPage;
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + tasksPerPage);
-
   // Get unique orgs for filtering
   const uniqueOrgs = Array.from(
     new Map(
-      (tasks ?? []).map((t) => [t.project.orgId, t.project.org.name])
+      tasks.map((t) => [t.project.orgId, t.project.org.name])
     ).entries()
   );
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, orgFilter, priorityFilter]);
+  }, [debouncedSearch, orgFilter, priorityFilter, sortBy, sortOrder]);
 
   const handleSort = (field: 'priority' | 'deadline' | 'created') => {
     if (sortBy === field) {
@@ -182,13 +185,13 @@ export default function PendingTasksPage() {
 
             {isLoading ? (
               <div className="text-center py-8">Loading tasks...</div>
-            ) : paginatedTasks.length === 0 ? (
+            ) : filteredTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No pending tasks found
               </div>
             ) : (
               <>
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[60vh] overflow-y-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -232,7 +235,7 @@ export default function PendingTasksPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedTasks.map((task) => (
+                      {filteredTasks.map((task) => (
                         <TableRow
                           key={task.id}
                           className="cursor-pointer hover:bg-muted/50"
@@ -271,31 +274,35 @@ export default function PendingTasksPage() {
                   </Table>
                 </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Page {page} of {totalPages} ({filteredTasks.length} tasks)
-                    </div>
-                    <div className="flex gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    {currentPage > 1 && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
                       >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
                       </Button>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages || 1}
+                  </div>
+                  <div>
+                    {currentPage < totalPages && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
                       >
                         Next
+                        <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>
