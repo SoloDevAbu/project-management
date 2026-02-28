@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useTasks, useUpdateTask, type Task } from '@/hooks/tasks/useTasks';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -283,7 +284,14 @@ export default function MemberTasksPage() {
                               {task.priority}
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-medium">{task.title}</TableCell>
+                          <TableCell className="font-medium">
+                            <Link
+                              href={`/orgs/${orgId}/my-work/${projectId}/tasks/${task.id}`}
+                              className="text-primary hover:underline"
+                            >
+                              {task.title}
+                            </Link>
+                          </TableCell>
                           <TableCell>
                             <Badge variant={getStatusColor(task.status)}>
                               {task.status}

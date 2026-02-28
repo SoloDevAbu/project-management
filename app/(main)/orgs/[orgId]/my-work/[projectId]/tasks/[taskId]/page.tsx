@@ -1,34 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import {
-  useTask,
-  useTasks,
-  useUpdateTaskAssignee,
-  useUpdateTaskReviewer,
-  useAddTaskDependency,
-  useRemoveTaskDependency,
-  type TaskDetail,
-} from '@/hooks/tasks/useTasks';
-import { useTaskComments, useAddTaskComment, useDeleteTaskComment } from '@/hooks/tasks/useTaskComments';
-import { useUserRole } from '@/hooks/organization';
-import { useProjectTeamMembers } from '@/hooks/organization';
 import { useSession } from 'next-auth/react';
+import { useTask, useUpdateTask, type TaskDetail } from '@/hooks/tasks/useTasks';
+import { useTaskComments, useAddTaskComment, useDeleteTaskComment } from '@/hooks/tasks/useTaskComments';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
-import { ArrowLeft, Pencil, Link2, X, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, CheckSquare, Send, Trash2 } from 'lucide-react';
 
 function formatDuration(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -36,48 +18,20 @@ function formatDuration(minutes: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function TaskDetailPage() {
+export default function MemberTaskDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const orgId = params.orgId as string;
   const projectId = params.projectId as string;
   const taskId = params.taskId as string;
+  const { data: session } = useSession();
 
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [blockedByTaskId, setBlockedByTaskId] = useState<string>('');
   const [commentText, setCommentText] = useState('');
 
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
-  const { data: userRole, isLoading: roleLoading } = useUserRole(orgId);
-  const { data: projectTasks } = useTasks(orgId, projectId);
-  const { data: teamMembersData } = useProjectTeamMembers(orgId, projectId);
-  const updateAssignee = useUpdateTaskAssignee(orgId, projectId, taskId);
-  const updateReviewer = useUpdateTaskReviewer(orgId, projectId, taskId);
-  const addDependency = useAddTaskDependency(orgId, projectId, taskId);
-  const removeDependency = useRemoveTaskDependency(orgId, projectId, taskId);
+  const updateTask = useUpdateTask(orgId, projectId, taskId);
   const { data: comments, isLoading: commentsLoading } = useTaskComments(orgId, projectId, taskId);
   const addComment = useAddTaskComment(orgId, projectId, taskId);
   const deleteComment = useDeleteTaskComment(orgId, projectId, taskId);
-  const { data: session } = useSession();
-
-  const members = teamMembersData?.members ?? [];
-
-  useEffect(() => {
-    if (roleLoading || userRole === undefined) return;
-    if (userRole === 'MEMBER') {
-      router.replace(`/orgs/${orgId}/my-work`);
-    }
-  }, [userRole, roleLoading, orgId, router]);
-
-  if (roleLoading || !userRole || (userRole !== 'ADMIN' && userRole !== 'MAINTAINER')) {
-    return (
-      <div className="space-y-4">
-        <div className="text-muted-foreground">
-          {roleLoading ? 'Loading...' : 'Redirecting...'}
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -92,9 +46,9 @@ export default function TaskDetailPage() {
       <div className="space-y-4">
         <div>Task not found</div>
         <Button asChild variant="outline">
-          <Link href={`/orgs/${orgId}/projects/${projectId}/tasks`}>
+          <Link href={`/orgs/${orgId}/my-work/${projectId}/tasks`}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to tasks
+            Back to my tasks
           </Link>
         </Button>
       </div>
@@ -102,34 +56,44 @@ export default function TaskDetailPage() {
   }
 
   const detail = task as TaskDetail;
-  const blockedByIds = new Set(detail.dependencies?.map((d) => d.blockedByTask.id) ?? []);
-  const availableBlockingTasks = (projectTasks ?? []).filter(
-    (t) => t.id !== taskId && !blockedByIds.has(t.id)
-  );
+  const canUpdate = task.status !== 'DONE' && task.status !== 'ARCHIVED';
 
   return (
     <div className="flex gap-4">
-      <div className='space-y-4 w-full'>
+      <div className="space-y-4 w-full">
         <div className="flex items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm">
-            <Link href={`/orgs/${orgId}/projects/${projectId}/tasks`}>
+            <Link href={`/orgs/${orgId}/my-work/${projectId}/tasks`}>
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back to tasks
+              Back to my tasks
             </Link>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit task
-          </Button>
-        </div>
 
-        <EditTaskDialog
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          orgId={orgId}
-          projectId={projectId}
-          task={task}
-        />
+          {canUpdate && (
+            <div className="flex gap-2">
+              {task.status !== 'IN_PROGRESS' && task.status !== 'REVIEW' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => updateTask.mutate({ status: 'IN_PROGRESS' })}
+                  disabled={updateTask.isPending}
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Start
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => updateTask.mutate({ status: 'DONE' })}
+                disabled={updateTask.isPending}
+              >
+                <CheckSquare className="h-4 w-4 mr-1" />
+                Mark done
+              </Button>
+            </div>
+          )}
+        </div>
 
         <Card>
           <CardHeader>
@@ -157,44 +121,20 @@ export default function TaskDetailPage() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Assignee</p>
-                <Select
-                  value={task.assigneeUserId ?? 'none'}
-                  onValueChange={(v) => updateAssignee.mutate(v === 'none' ? null : v)}
-                  disabled={updateAssignee.isPending}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Unassigned" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Unassigned</SelectItem>
-                    {members.map((m) => (
-                      <SelectItem key={m.user.id} value={m.user.id}>
-                        {m.user.name || m.user.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-xs font-medium text-muted-foreground">Assignee</p>
+                <p className="text-sm">
+                  {task.assignee
+                    ? task.assignee.name || task.assignee.email
+                    : 'Unassigned'}
+                </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Reviewer</p>
-                <Select
-                  value={task.reviewerUserId ?? 'none'}
-                  onValueChange={(v) => updateReviewer.mutate(v === 'none' ? null : v)}
-                  disabled={updateReviewer.isPending}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="No reviewer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No reviewer</SelectItem>
-                    {members.map((m) => (
-                      <SelectItem key={m.user.id} value={m.user.id}>
-                        {m.user.name || m.user.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-xs font-medium text-muted-foreground">Reviewer</p>
+                <p className="text-sm">
+                  {task.reviewer
+                    ? task.reviewer.name || task.reviewer.email
+                    : 'No reviewer'}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Deadline</p>
@@ -228,12 +168,7 @@ export default function TaskDetailPage() {
             {detail.parent && (
               <div>
                 <h3 className="font-medium mb-1">Parent task</h3>
-                <Link
-                  href={`/orgs/${orgId}/projects/${projectId}/tasks/${detail.parent.id}`}
-                  className="text-sm text-primary hover:underline"
-                >
-                  {detail.parent.title}
-                </Link>
+                <p className="text-sm text-muted-foreground">{detail.parent.title}</p>
               </div>
             )}
 
@@ -242,13 +177,8 @@ export default function TaskDetailPage() {
                 <h3 className="font-medium mb-2">Sub-tasks</h3>
                 <ul className="space-y-1">
                   {detail.children.map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        href={`/orgs/${orgId}/projects/${projectId}/tasks/${c.id}`}
-                        className="text-sm text-primary hover:underline"
-                      >
-                        {c.title}
-                      </Link>
+                    <li key={c.id} className="text-sm">
+                      {c.title}
                       <span className="text-xs text-muted-foreground ml-2">
                         {c.status} · {c.priority}
                       </span>
@@ -258,72 +188,21 @@ export default function TaskDetailPage() {
               </div>
             )}
 
-            <div>
-              <h3 className="font-medium mb-2">Blocked by</h3>
-              {detail.dependencies && detail.dependencies.length > 0 ? (
-                <ul className="space-y-2">
+            {detail.dependencies && detail.dependencies.length > 0 && (
+              <div>
+                <h3 className="font-medium mb-2">Blocked by</h3>
+                <ul className="space-y-1">
                   {detail.dependencies.map((d) => (
-                    <li
-                      key={d.blockedByTask.id}
-                      className="flex items-center justify-between gap-2 py-1"
-                    >
-                      <div>
-                        <Link
-                          href={`/orgs/${orgId}/projects/${projectId}/tasks/${d.blockedByTask.id}`}
-                          className="text-sm text-primary hover:underline"
-                        >
-                          {d.blockedByTask.title}
-                        </Link>
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {d.blockedByTask.status}
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeDependency.mutate(d.blockedByTask.id)}
-                        disabled={removeDependency.isPending}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <li key={d.blockedByTask.id} className="text-sm">
+                      {d.blockedByTask.title}
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {d.blockedByTask.status}
+                      </span>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">Not blocked by any task</p>
-              )}
-              {availableBlockingTasks.length > 0 && (
-                <div className="flex gap-2 mt-2">
-                  <Select value={blockedByTaskId} onValueChange={setBlockedByTaskId}>
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder="Add blocked by..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableBlockingTasks.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      if (blockedByTaskId) {
-                        addDependency.mutate(blockedByTaskId, {
-                          onSuccess: () => setBlockedByTaskId(''),
-                        });
-                      }
-                    }}
-                    disabled={!blockedByTaskId || addDependency.isPending}
-                  >
-                    <Link2 className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {detail?.workLogs && detail.workLogs.length > 0 && (
               <div>
@@ -402,9 +281,7 @@ export default function TaskDetailPage() {
                     <span className="text-sm font-medium">
                       {c.user.name || c.user.email}
                     </span>
-                    {(c.userId === session?.user?.id ||
-                      userRole === 'ADMIN' ||
-                      userRole === 'MAINTAINER') && (
+                    {c.userId === session?.user?.id && (
                       <Button
                         variant="ghost"
                         size="sm"

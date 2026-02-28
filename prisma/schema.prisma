@@ -126,6 +126,7 @@ model User {
   auditLogs             AuditLog[]
   sentInvites           OrgInvite[]    @relation("OrgInviter")
   receivedInvites       OrgInvite[]    @relation("OrgInvitee")
+  taskComments          TaskComment[]
 
   @@map("users")
 }
@@ -310,6 +311,7 @@ model Task {
   tags            TaskTag[]
   workLogs        WorkLog[]
   inventoryLinks  InventoryLink[]
+  comments        TaskComment[]
 
   @@index([projectId])
   @@index([parentId])
@@ -368,6 +370,20 @@ model TaskTag {
 
   @@id([taskId, tag])
   @@map("task_tags")
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_comments")
 }
 
 model WorkLog {
