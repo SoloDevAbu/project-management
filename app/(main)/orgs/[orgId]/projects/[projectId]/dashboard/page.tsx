@@ -8,6 +8,7 @@ import type { ProjectDetailesEditorRef } from '@/components/projects/ProjectDeta
 import { Button } from '@/components/ui/button';
 import { useRef, useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
+import { MarkDownViewer } from '@/components/projects/MarkDownViewer';
 
 export default function ProjectDashboardPage() {
   const params = useParams();
@@ -126,7 +127,7 @@ export default function ProjectDashboardPage() {
                 initialContent={project.description}
               />
             ) : (
-              <p className="whitespace-pre-wrap">{project.description || 'No description yet.'}</p>
+              <MarkDownViewer content={project?.description || ''} />
             )}
           </CardContent>
         </Card>
