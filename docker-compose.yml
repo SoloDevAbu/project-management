@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   postgres:
@@ -30,7 +28,6 @@ services:
       - .env
     ports:
       - "7751:7751"
-    command: sh -c "npx prisma migrate deploy && node server.js"
 
 volumes:
   postgres_data:

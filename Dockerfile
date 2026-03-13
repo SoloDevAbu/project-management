@@ -51,8 +51,17 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 
+# Copy prisma binary and generated client
+COPY --from=builder /app/node_modules/.bin/prisma* ./node_modules/.bin/
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# copy startup script
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 USER nextjs
 
 EXPOSE 7751
 
-CMD ["node", "server.js"]
+CMD ["./start.sh"]
