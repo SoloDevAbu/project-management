@@ -31,7 +31,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const inviteMemberSchema = z.object({
   email: z.string().email('Invalid email address'),
-  role: z.enum(['MAINTAINER', 'MEMBER']).default('MEMBER'),
+  role: z.enum(['MAINTAINER', 'MEMBER']),
 });
 
 type InviteMemberForm = z.infer<typeof inviteMemberSchema>;
