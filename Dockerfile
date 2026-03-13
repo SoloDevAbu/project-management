@@ -23,6 +23,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma client
+# prisma requires DATABASE_URL during build
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 RUN npx prisma generate
 
 # Build Next.js
@@ -39,15 +43,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup -g 1001 nodejs
-RUN adduser -S nextjs -u 1001
+RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
 # standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-
-# prisma schema
 COPY --from=builder /app/prisma ./prisma
 
 USER nextjs

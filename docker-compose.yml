@@ -18,7 +18,10 @@ services:
       - "5432:5432"
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        DATABASE_URL: ${DATABASE_URL}
     container_name: pm_next_app
     restart: always
     depends_on:
