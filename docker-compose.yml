@@ -26,6 +26,9 @@ services:
       - postgres
     env_file:
       - .env
+    environment:
+      - PORT=7751
+      - HOSTNAME=0.0.0.0
     ports:
       - "7751:7751"
 

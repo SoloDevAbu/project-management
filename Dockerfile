@@ -1,11 +1,11 @@
-# ---------- Dependencies ----------
-FROM node:20-alpine AS deps
+# ---------- Base ----------
+FROM node:20-slim AS base
+RUN apt-get update && apt-get install -y openssl && apt-get clean && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-RUN apk add --no-cache libc6-compat
-
+# ---------- Dependencies ----------
+FROM base AS deps
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-
 RUN \
   if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install --frozen-lockfile; \
@@ -14,22 +14,16 @@ RUN \
   fi
 
 # ---------- Builder ----------
-FROM node:20-alpine AS builder
-WORKDIR /app
-
+FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client
-# prisma requires DATABASE_URL during build
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 
 RUN npx prisma generate
-
-# Build Next.js
 RUN \
   if [ -f yarn.lock ]; then yarn build; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm build; \
@@ -37,31 +31,39 @@ RUN \
   fi
 
 # ---------- Runner ----------
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y openssl && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
-# standalone output
+# Next.js standalone
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
 
-# Copy prisma binary and generated client
+# Prisma
+COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.bin/prisma* ./node_modules/.bin/
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
-# copy startup script
-COPY start.sh ./start.sh
-RUN chmod +x ./start.sh
+COPY --from=builder /app/package.json ./package.json
+
+# Entrypoint
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
 EXPOSE 7751
 
-CMD ["./start.sh"]
+ENTRYPOINT ["start.sh"]
+CMD ["node", "server.js"]
