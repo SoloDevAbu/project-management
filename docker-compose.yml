@@ -1,8 +1,11 @@
 services:
 
   postgres:
+    # Optional local PostgreSQL for development: enable with --profile local-db
     image: postgres:16-alpine
     container_name: pm_postgres
+    profiles:
+      - local-db
     restart: always
     env_file:
       - .env
@@ -15,7 +18,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,9 +33,9 @@ services:
     restart: "no"
     env_file:
       - .env
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # Allows containers to reach host DB on Linux via host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: npx prisma migrate deploy
 
   app:
@@ -48,6 +51,9 @@ services:
         condition: service_completed_successfully
     env_file:
       - .env
+    # Allows containers to reach host DB on Linux via host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "7751:7751"
 
