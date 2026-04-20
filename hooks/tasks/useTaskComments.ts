@@ -39,6 +39,7 @@ export function useTaskComments(
         initialPageParam: undefined as string | undefined,
         getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
         enabled: !!orgId && !!projectId && !!taskId,
+        refetchInterval: 10000,
     });
 }
 
