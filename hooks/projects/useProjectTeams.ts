@@ -30,6 +30,7 @@ export function useAssignTeamToProject(orgId: string, projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId, 'teams'] });
       queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'team-members'] });
     },
   });
 }
@@ -44,6 +45,7 @@ export function useRemoveTeamFromProject(orgId: string, projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId, 'teams'] });
       queryClient.invalidateQueries({ queryKey: ['projects', orgId, projectId] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'team-members'] });
     },
   });
 }
