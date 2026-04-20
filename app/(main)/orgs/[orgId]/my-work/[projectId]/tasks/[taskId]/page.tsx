@@ -18,6 +18,61 @@ function formatDuration(minutes: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function getInitials(nameOrEmail: string) {
+  if (!nameOrEmail) return "?";
+  if (nameOrEmail.includes("@")) {
+    return nameOrEmail.substring(0, 2).toUpperCase();
+  }
+  const parts = nameOrEmail.split(" ").filter((p) => p.length > 0);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return nameOrEmail.substring(0, 2).toUpperCase();
+}
+
+function getColorClass(text: string) {
+  const colors = [
+    "bg-red-500",
+    "bg-blue-500",
+    "bg-green-500",
+    "bg-yellow-500",
+    "bg-purple-500",
+    "bg-pink-500",
+    "bg-indigo-500",
+    "bg-teal-500",
+  ];
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = text.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+const Linkify = ({ text }: { text: string }) => {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return (
+    <span className="whitespace-pre-wrap flex-1 break-words">
+      {parts.map((part, i) => {
+        if (part.match(urlRegex)) {
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:underline"
+            >
+              {part}
+            </a>
+          );
+        }
+        return part;
+      })}
+    </span>
+  );
+};
+
 export default function MemberTaskDetailPage() {
   const params = useParams();
   const orgId = params.orgId as string;
@@ -26,6 +81,7 @@ export default function MemberTaskDetailPage() {
   const { data: session } = useSession();
 
   const [commentText, setCommentText] = useState('');
+  const [chatSearch, setChatSearch] = useState('');
 
   const { data: task, isLoading } = useTask(orgId, projectId, taskId);
   const updateTask = useUpdateTask(orgId, projectId, taskId);
@@ -60,8 +116,8 @@ export default function MemberTaskDetailPage() {
   const canUpdate = task.status !== 'DONE' && task.status !== 'ARCHIVED';
 
   return (
-    <div className="flex gap-4">
-      <div className="space-y-4 w-full">
+    <div className="flex gap-4 items-start">
+      <div className="space-y-4 flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <Button asChild variant="ghost" size="sm">
             <Link href={`/orgs/${orgId}/my-work/${projectId}/tasks`}>
@@ -239,9 +295,15 @@ export default function MemberTaskDetailPage() {
         </Card>
       </div>
 
-      <Card className="w-[360px] shrink-0 sticky top-4 flex flex-col max-h-screen">
-        <CardHeader className="shrink-0">
+      <Card className="w-[450px] shrink-0 sticky top-4 flex flex-col h-[60vh]">
+        <CardHeader className="shrink-0 pb-3">
           <CardTitle>Comments</CardTitle>
+          <Input
+            placeholder="Search comments..."
+            value={chatSearch}
+            onChange={(e) => setChatSearch(e.target.value)}
+            className="h-8 text-sm mt-2"
+          />
         </CardHeader>
         <CardContent className="flex flex-col gap-4 overflow-hidden flex-1">
           <form
@@ -270,37 +332,53 @@ export default function MemberTaskDetailPage() {
             </Button>
           </form>
 
-          <div className="overflow-y-auto flex-1">
+          <div className="overflow-y-auto flex-1 pr-2">
             {commentsLoading ? (
               <p className="text-sm text-muted-foreground">Loading comments...</p>
-            ) : allComments.length === 0 ? (
+            ) : !allComments || allComments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No comments yet.</p>
             ) : (
               <ul className="space-y-3">
-                {allComments.map((c) => (
-                  <li key={c.id} className="border rounded-md p-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        {c.user.name || c.user.email}
-                      </span>
-                      {c.userId === session?.user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => deleteComment.mutate(c.id)}
-                          disabled={deleteComment.isPending}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{c.content}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(c.createdAt).toLocaleString()}
-                    </p>
-                  </li>
-                ))}
+                {allComments
+                  .filter((c) =>
+                    c.content.toLowerCase().includes(chatSearch.toLowerCase()),
+                  )
+                  .map((c) => {
+                    const name = c.user.name || c.user.email;
+                    return (
+                      <li key={c.id} className="border rounded-md p-3 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex gap-2">
+                            <div
+                              className={`flex items-center justify-center shrink-0 w-6 h-6 rounded-full text-[10px] font-medium text-white ${getColorClass(name)}`}
+                              title={name}
+                            >
+                              {getInitials(name)}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <p className="text-sm text-foreground">
+                                <Linkify text={c.content} />
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                {new Date(c.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          {c.userId === session?.user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 shrink-0 ml-2"
+                              onClick={() => deleteComment.mutate(c.id)}
+                              disabled={deleteComment.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
               </ul>
             )}
             {hasNextPage && (
